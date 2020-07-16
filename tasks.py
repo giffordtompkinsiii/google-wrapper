@@ -37,12 +37,15 @@ class TaskList(object):
         for t in app.tasks().list(tasklist=self.id, maxResults=100).execute()['items']:
             self.tasks.append(Task(self, t))
 
-    def add_task(self, task_name, parent=None):
+    def add_task(self, task_name=None, parent=None):
         body = {
-            'title':input('New Task: ')
-        } ## TODO SET PARENT.
-        self.service.tasks().insert(tasklist=self.id)
-        return
+            'title':input('New Task: ') if not task_name else task_name
+        }
+        parent_exist = input(f"Do you want to assign a parent task? (Y/n) \n> ").lower() == 'y'
+        if parent_exist:
+            first_level_tasks = self.print_tasks()
+            parent = first_level_tasks[int(input("\n[Input interger selection]\n> "))].id
+        return self.service.tasks().insert(tasklist=self.id, body=body, parent=parent).execute()
 
 
     def print_tasks(self):
@@ -51,9 +54,11 @@ class TaskList(object):
             print(f"[{i}] -- {t.title}")
         return first_level_tasks
 
-    def organize_tasks(self):
+    def organize_tasks(self, tasks=None):
+        if not tasks:
+            tasks = self.tasks
         first_level_tasks = self.print_tasks()
-        for t in self.tasks:
+        for t in tasks:
             print(t.title)   
             if hasattr(t, 'parent'):
                 question = f"Would you like to change the parent of this task from '{[s.title for s in self.tasks if s.id==t.parent][0]}'?"
@@ -64,9 +69,6 @@ class TaskList(object):
                 continue
             elif answer.isnumeric():
                 t.set_parent(first_level_tasks[int(answer)].id)
-            # else:
-            #     self.service.tasks().insert()
-
 
 for list in app.tasklists().list().execute()['items']:
     app.task_lists.append(TaskList(list))
